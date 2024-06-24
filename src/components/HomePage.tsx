@@ -1,56 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { PokemonClient, NamedAPIResource } from 'pokenode-ts';
 import PokemonList from '../components/PokemonList';
-
-interface PokemonWithDetails extends NamedAPIResource {
-  imageUrl: string;
-  types: string[];
-}
+import { fetchPokemonData } from '../api/pokemonApi';
+import { categorizePokemon } from '../utils/pokemonUtils';
+import { PokemonWithDetails } from '../types/types';
 
 const HomePage: React.FC = () => {
   const [categorizedPokemon, setCategorizedPokemon] = useState<{ [type: string]: PokemonWithDetails[] }>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [favourites, setFavourites] = useState<string[]>([]);
+  const [isDataFetched, setIsDataFetched] = useState(false);
 
   useEffect(() => {
-    const fetchPokemon = async () => {
-      const api = new PokemonClient();
-      const response = await api.listPokemons(0, 151);
-      const allPokemon = response.results;
-      const detailedPokemonList = [];
-
-      for (let i = 0; i < allPokemon.length; i += 20) {
-        const batch = allPokemon.slice(i, i + 20);
-        const batchDetails = await Promise.all(
-          batch.map(async (pokemon) => {
-            const details = await api.getPokemonByName(pokemon.name);
-            return {
-              ...pokemon,
-              imageUrl: details.sprites.front_default || '',
-              types: details.types.map(typeInfo => typeInfo.type.name),
-            };
-          })
-        );
-        detailedPokemonList.push(...batchDetails);
-  
-        const categorized = detailedPokemonList.reduce((acc, pokemon) => {
-          pokemon.types.forEach(type => {
-            if (!acc[type]) acc[type] = [];
-            acc[type].push(pokemon);
-          });
-          return acc;
-        }, {} as { [type: string]: PokemonWithDetails[] });
-
-        setCategorizedPokemon(categorized);
-
-        // Sleep for 1 second after each batch
-        if (i + 20 < allPokemon.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
+    const fetchData = async () => {
+      const data = await fetchPokemonData();
+      setCategorizedPokemon(categorizePokemon(data));
+      setIsDataFetched(true);
     };
-    fetchPokemon();
-  }, []);
+
+    if (!isDataFetched) {
+      fetchData();
+    }
+  }, [isDataFetched]);
 
   useEffect(() => {
     const favs = localStorage.getItem('favourites');
@@ -81,7 +51,7 @@ const HomePage: React.FC = () => {
         placeholder="Search Pokémon"
         value={searchTerm}
         onChange={handleSearch}
-        className="w-full p-2 mb-4 border rounded"
+        className="w-full p-2 mb-4 border border-gray-700 bg-gray-800 text-white placeholder-gray-500 rounded focus:outline-none focus:border-blue-500"
       />
       <PokemonList
         categorizedPokemon={categorizedPokemon}

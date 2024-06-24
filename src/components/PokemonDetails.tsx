@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { PokemonClient } from 'pokenode-ts';
+import { getCachedData, hasCachedData } from '../utils/cacheUtil';
 
 const PokemonDetails: React.FC = () => {
   const { name } = useParams<{ name: string }>();
@@ -12,7 +13,7 @@ const PokemonDetails: React.FC = () => {
       if (name) {
         try {
           const api = new PokemonClient();
-          const details = await api.getPokemonByName(name);
+          const details = await getCachedData(name, () => api.getPokemonByName(name));
           setPokemon(details);
         } catch (err) {
           setError('Failed to fetch Pokémon details.');
